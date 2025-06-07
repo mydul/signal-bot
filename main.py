@@ -2,15 +2,13 @@ import traceback
 import os
 import requests
 import json
-from strategies.spytips_cool import get_spytips_cool_signals
-from strategies.nvidia import get_nvidia_signals # Corrected import to match function name
-from strategies.spytips_cool import spy_tips_cool # Keep if spy_tips_cool() is used elsewhere
+# Remove 'get_spytips_cool_signals' if it doesn't exist, only keep what's truly there
+from strategies.spytips_cool import spy_tips_cool # Ensure this is the correct function name in spytips_cool.py
+from strategies.nvidia import get_nvidia_signals # Assuming this is correct for nvidia.py
 
 def saveText(subject, subject2=None, text=None):
-    if not subject and not subject2 and not text: # Added text check for clarity
+    if not subject and not subject2 and not text:
         return
-    # This part seems to be for saving to a local file, which is separate from Discord
-    # If you only want Discord messages, this function might not be needed for the bot's primary operation
     d = open('message.txt', 'w')
     if subject:
         d.write(subject + "\n\n")
@@ -20,15 +18,12 @@ def saveText(subject, subject2=None, text=None):
         d.write(text)
     d.close()
 
-# IMPORTANT: Define the send_discord_message function correctly
-# This function was missing its implementation in your provided snippet.
-# Here's a standard way to implement it:
+# Define the send_discord_message function (make sure this is complete from previous instructions)
 def send_discord_message(webhook_url, title, subtitle, text):
     if not webhook_url:
         print("Error: DISCORD_WEBHOOK_URL not set.")
         return
 
-    # Discord webhook payload structure
     payload = {
         "embeds": [
             {
@@ -41,7 +36,7 @@ def send_discord_message(webhook_url, title, subtitle, text):
                         "inline": False
                     }
                 ],
-                "color": 3447003 # A common color (blue) for embeds
+                "color": 3447003
             }
         ]
     }
@@ -51,50 +46,36 @@ def send_discord_message(webhook_url, title, subtitle, text):
 
     try:
         response = requests.post(webhook_url, data=json.dumps(payload), headers=headers)
-        response.raise_for_status() # Raise an HTTPError for bad responses (4xx or 5xx)
+        response.raise_for_status()
         print(f"Message sent to Discord successfully for {title}")
-    except requests.exceptions.HTTPError as errh:
-        print(f"Http Error: {errh}")
-    except requests.exceptions.ConnectionError as errc:
-        print(f"Error Connecting: {errc}")
-    except requests.exceptions.Timeout as errt:
-        print(f"Timeout Error: {errt}")
-    except requests.exceptions.RequestException as err:
-        print(f"Oops: Something Else {err}")
+    except requests.exceptions.RequestException as e:
+        print(f"Error sending Discord message: {e}")
     except Exception as e:
         print(f"An unexpected error occurred while sending Discord message: {e}")
 
 
-# This is the single, correct main function
 def main():
     discord_webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
 
     # --- SPYTIPS Signal Check ---
-    # Call the original spytips_cool() if it's meant to trigger the saveText or similar.
-    # If the intention is to use get_spytips_cool_signals for Discord, then use that.
-    # Based on the original text, get_spytips_cool_signals() is for Discord.
-    spytips_title, spytips_subtitle, spytips_text = get_spytips_cool_signals()
-    if spytips_title: # Only send if there's a message to send (title is not None)
+    # Use spy_tips_cool directly for the signals
+    spytips_title, spytips_subtitle, spytips_text = spy_tips_cool()
+    if spytips_title: # If spy_tips_cool returns something, send it
         send_discord_message(discord_webhook_url, spytips_title, spytips_subtitle, spytips_text)
     else:
         print("No SPYTIPS signal change to report.")
 
-    # --- Add NVDA Signal Check ---
-    # Ensure your strategies/nvidia.py has a function named get_nvidia_signals
-    # that returns (title, subtitle, text) or (None, None, None)
+    # --- NVDA Signal Check ---
     nvda_title, nvda_subtitle, nvda_text = get_nvidia_signals()
-    if nvda_title: # Only send if there's a message to send (title is not None)
+    if nvda_title:
         send_discord_message(discord_webhook_url, nvda_title, nvda_subtitle, nvda_text)
     else:
         print("No NVDA signal change to report.")
 
-# This ensures main() is called when the script runs
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        error_message = repr(traceback.format_exc()) # Use format_exc() for full traceback
+        error_message = repr(traceback.format_exc())
         print(f"An unhandled error occurred in main: {error_message}")
-        # You could also send this error to Discord if you want
-        # send_discord_message(os.getenv("DISCORD_WEBHOOK_URL"), "Bot Error", "Unhandled Exception", error_message)
-        saveText("Unhandled Bot Error", error_message) # If you want to log to file
+        saveText("Unhandled Bot Error", error_message)
